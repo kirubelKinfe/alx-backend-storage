@@ -78,3 +78,44 @@ b'hello'
 
 ## Author
 Muse Semu
+
+## Advanced: Expiring Web Cache and Tracker
+
+The `web.py` module provides a function to fetch and cache web pages using Redis, tracking the number of times each URL is accessed. The cache expires after 10 seconds. Decorators are used to implement caching and access counting.
+
+### Usage
+
+You can use the `get_page` function to fetch a web page and cache its content:
+
+```python
+#!/usr/bin/env python3
+from web import get_page
+
+url = "http://slowwly.robertomurray.co.uk/delay/3000/url/https://www.example.com/"
+content = get_page(url)
+print(content)
+```
+
+- The first call to `get_page(url)` will fetch the page and store it in Redis for 10 seconds.
+- Subsequent calls within 10 seconds will return the cached content instantly.
+- The number of times a URL was actually fetched (not served from cache) is tracked in Redis under the key `count:{url}`.
+
+### Checking the Access Count
+
+You can check how many times a URL was fetched (not served from cache) using Redis CLI or Python:
+
+**Using Redis CLI:**
+```bash
+redis-cli GET "count:http://slowwly.robertomurray.co.uk/delay/3000/url/https://www.example.com/"
+```
+
+**Using Python:**
+```python
+import redis
+url = "http://slowwly.robertomurray.co.uk/delay/3000/url/https://www.example.com/"
+r = redis.Redis()
+print(r.get(f"count:{url}"))
+```
+
+### File
+- **web.py**: Contains the `get_page` function and decorators for caching and access tracking.
