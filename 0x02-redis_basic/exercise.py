@@ -3,6 +3,7 @@ import redis
 import uuid
 from typing import Union, Callable, Optional
 from functools import wraps
+import ast
 
 def count_calls(method: Callable) -> Callable:
     """Decorator to count the number of times a method is called"""
@@ -40,9 +41,10 @@ def replay(method: Callable) -> None:
     outputs = cache.lrange(f"{qualname}:outputs", 0, -1)
     
     for input_args, output in zip(inputs, outputs):
-        input_str = input_args.decode("utf-8")
+        # Safely evaluate the tuple string
+        input_tuple = ast.literal_eval(input_args.decode("utf-8"))
         output_str = output.decode("utf-8")
-        print(f"{qualname}(*{input_str}) -> {output_str}")
+        print(f"{qualname}(*{input_tuple}) -> {output_str}")
 
 class Cache:
     def __init__(self):

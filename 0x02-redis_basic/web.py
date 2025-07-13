@@ -18,20 +18,28 @@ def count_access(method: Callable) -> Callable:
     return wrapper
 
 def cache_page(method: Callable) -> Callable:
-    """Decorator to cache the page content with a 10-second expiration"""
+    """Decorator to cache the page content with a 10-second expiration and count access only on cache miss"""
     @wraps(method)
     def wrapper(url: str) -> str:
-        """Wrapper function that caches result and returns cached or fresh content"""
         cache_key = f"cache:{url}"
+        count_key = f"count:{url}"
         cached_content = redis_client.get(cache_key)
         if cached_content is not None:
-            return cached_content.decode("utf-8")
+            if isinstance(cached_content, bytes):
+                return cached_content.decode("utf-8")
+            return str(cached_content)
+        # Only increment count if not cached
+        redis_client.incr(count_key)
         content = method(url)
-        redis_client.setex(cache_key, 10, content)
-        return content
+        # Ensure content is stored as bytes
+        if isinstance(content, str):
+            redis_client.setex(cache_key, 10, content.encode("utf-8"))
+            return content
+        else:
+            redis_client.setex(cache_key, 10, content)
+            return content.decode("utf-8") if isinstance(content, bytes) else str(content)
     return wrapper
 
-@count_access
 @cache_page
 def get_page(url: str) -> str:
     """Fetch HTML content from a URL and return it"""
