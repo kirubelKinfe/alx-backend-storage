@@ -1,3 +1,7 @@
+"""
+This module provides a function to fetch and cache web pages using Redis, tracking the number of times each URL is accessed.
+The cache expires after 10 seconds. Decorators are used to implement caching and access counting.
+"""
 #!/usr/bin/env python3
 import redis
 import requests
@@ -8,19 +12,20 @@ from functools import wraps
 redis_client = redis.Redis()
 
 def count_access(method: Callable) -> Callable:
-    """Decorator to count the number of times a URL is accessed"""
+    """Return a decorator that counts how many times a URL is accessed by incrementing a Redis key."""
     @wraps(method)
     def wrapper(url: str) -> str:
-        """Wrapper function that increments access count and calls original method"""
+        """Increment the access count for the given URL and call the original method."""
         count_key = f"count:{url}"
         redis_client.incr(count_key)
         return method(url)
     return wrapper
 
 def cache_page(method: Callable) -> Callable:
-    """Decorator to cache the page content with a 10-second expiration and count access only on cache miss"""
+    """Return a decorator that caches the HTML content of a URL in Redis for 10 seconds and counts access only on cache miss."""
     @wraps(method)
     def wrapper(url: str) -> str:
+        """Return the cached page if available, otherwise fetch, cache, and return the page, incrementing the access count only on cache miss."""
         cache_key = f"cache:{url}"
         count_key = f"count:{url}"
         cached_content = redis_client.get(cache_key)
@@ -42,6 +47,6 @@ def cache_page(method: Callable) -> Callable:
 
 @cache_page
 def get_page(url: str) -> str:
-    """Fetch HTML content from a URL and return it"""
+    """Fetch the HTML content of the specified URL using requests and return it as a string."""
     response = requests.get(url)
     return response.text
